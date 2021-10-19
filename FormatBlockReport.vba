@@ -1,25 +1,24 @@
 Option Explicit
 
-Dim DataWorkbook As Workbook
-Dim DataSheet As Worksheet
-Dim RotCoordLookupTable As Workbook
-Dim EPALookupTable As Workbook
-Dim ExtractTable As ListObject
-
-Sub Generate_Rot_Coord_Block_Report()
+' Excel won't let you directly call a macro that has a parameter,
+' so this is a wrapper sub around Format_Block_Report so it will
+' be listed in the Macro table
+Sub FormatBlockReport()
     Application.ScreenUpdating = False
     Call Format_Block_Report
     Application.ScreenUpdating = True
-    Range("A1").Select
-    Application.CutCopyMode = False
-
 End Sub
 
-Sub Format_Block_Report()
+Sub Format_Block_Report(Optional extract As Workbook)
 
     Dim fso As Scripting.FileSystemObject
     Dim fd As FileDialog
     Dim fileWasChosen As Boolean
+    Dim DataWorkbook As Workbook
+    Dim DataSheet As Worksheet
+    Dim RotCoordLookupTable As Workbook
+    Dim EPALookupTable As Workbook
+    Dim ExtractTable As ListObject
     Dim BlockReportCopy As String
     Dim firstYear As String
     Dim secondYear As String
@@ -28,33 +27,29 @@ Sub Format_Block_Report()
     Dim formulaString As String
     
     Set fso = New Scripting.FileSystemObject
+    If extract Is Nothing Then
+        MsgBox "Choose a Block Report to generate from..."
+        Set fd = Application.FileDialog(msoFileDialogOpen)
     
-    MsgBox "Choose a Block Report to generate from..."
-    Set fd = Application.FileDialog(msoFileDialogOpen)
+        fd.Filters.Clear
+        fd.Filters.Add "CSV Files", "*.csv, *.xl*"
+        fd.FilterIndex = 1
     
-    fd.Filters.Clear
-    fd.Filters.Add "CSV Files", "*.csv, *.xl*"
-    fd.FilterIndex = 1
+        fd.AllowMultiSelect = False
+        fd.InitialFileName = "N:\DOM1\Post Graduate Program\IM\Competence by Design - IM\Communications\Rotation Coordinator"
+        fd.Title = "Choose an Extract Data File"
     
-    fd.AllowMultiSelect = False
-    fd.InitialFileName = "N:\DOM1\Post Graduate Program\IM\Competence by Design - IM\Communications\Rotation Coordinator"
-    fd.Title = "Choose an Extract Data File"
+        fileWasChosen = fd.Show
     
-    fileWasChosen = fd.Show
+        If Not fileWasChosen Then
+            MsgBox "You didn't choose a Block Report File. Report generation was terminated."
+            End
+        End If
     
-    If Not fileWasChosen Then
-        MsgBox "You didn't choose a Block Report File. Report generation was terminated."
-        End
+        Set DataWorkbook = Workbooks.Open(Filename:=fd.SelectedItems(1))
+    Else
+        Set DataWorkbook = extract
     End If
-    
-    ' Creates a copy of the Block Report data to preserve the original. Stored in a variable for reference when
-    ' opening the new workbook
-    BlockReportCopy = Left(fd.SelectedItems(1), InStrRev(fd.SelectedItems(1), ".") - 1) & " copy." & _
-        Right(fd.SelectedItems(1), Len(fd.SelectedItems(1)) - InStrRev(fd.SelectedItems(1), "."))
-    
-    fso.CopyFile fd.SelectedItems(1), BlockReportCopy
-    
-    Set DataWorkbook = Workbooks.Open(Filename:=BlockReportCopy)
     
     ' For naming the file.
     ' If current month is before July, then the date format is
@@ -303,7 +298,11 @@ Sub Format_Block_Report()
     JuniorSeniorRotationColNum = ExtractTable.ListColumns("JuniorAndSeniorRotation").Range.Column
     
     DataWorkbook.Worksheets.Add After:=DataWorkbook.Worksheets("OriginalSheet")
-    DataWorkbook.Worksheets("Sheet1").Name = "PGY1"
+    If extract Is Nothing Then
+        DataWorkbook.Worksheets("Sheet1").Name = "PGY1"
+    Else
+        DataWorkbook.Worksheets("Sheet3").Name = "PGY1"
+    End If
     
     ' Filter PGY1s to not show blanks
     ExtractTable.Range.AutoFilter Field:=PGY1ColNum, Criteria1 _
@@ -323,7 +322,11 @@ Sub Format_Block_Report()
     '****************************
     
     DataWorkbook.Worksheets.Add After:=DataWorkbook.Worksheets("PGY1")
-    DataWorkbook.Worksheets("Sheet2").Name = "PGY2-3"
+    If extract Is Nothing Then
+        DataWorkbook.Worksheets("Sheet2").Name = "PGY2-3"
+    Else
+        DataWorkbook.Worksheets("Sheet4").Name = "PGY2-3"
+    End If
     
     ' Filter PGY1s to only show blanks
     ExtractTable.Range.AutoFilter Field:=PGY1ColNum, Criteria1 _
@@ -341,7 +344,11 @@ Sub Format_Block_Report()
     
     
     DataWorkbook.Worksheets.Add After:=DataWorkbook.Worksheets("PGY2-3")
-    DataWorkbook.Worksheets("Sheet3").Name = "PGY1&2-3"
+    If extract Is Nothing Then
+        DataWorkbook.Worksheets("Sheet3").Name = "PGY1&2-3"
+    Else
+        DataWorkbook.Worksheets("Sheet5").Name = "PGY1&2-3"
+    End If
     
     
     ' Filter ExtractTable to rotations with juniors and seniors
@@ -363,6 +370,16 @@ Sub Format_Block_Report()
     RotCoordLookupTable.Close
     EPALookupTable.Close
     
+    Range("A1").Select
+    Application.CutCopyMode = False
+    
+    ' If the extract is passed as a parameter, and thus this sub is being called from
+    ' GenerateRotCoordReport, then save the formatted extract so it can be inspected
+    ' afterwards if needed
+    
+    If Not extract Is Nothing Then
+        DataWorkbook.Save
+    End If
 End Sub
 
 
