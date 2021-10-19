@@ -1,8 +1,14 @@
 Option Explicit
 
-Dim DataWorkbook As Workbook
-Dim DataSheet As Worksheet
-Dim ExtractTable As ListObject
+' Excel won't let you directly call a macro that has a parameter,
+' so this is a wrapper sub around Generate_Rotation_Coordinator_Extract so it will
+' be listed in the Macro table
+Sub GenerateRotationCoordinatorExtract()
+    Application.ScreenUpdating = False
+    Call Generate_Rotation_Coordinator_Extract
+    Application.ScreenUpdating = True
+End Sub
+
 
 
 Function JoinByRotationLocationAndLevel( _
@@ -13,54 +19,57 @@ Function JoinByRotationLocationAndLevel( _
     trainingLevelRange As Range, _
     TrainingLevel As Integer) As Variant
     
-Dim textarray() As Variant
-
-Dim i As Integer
-Dim k As Integer
-k = 0
-Dim l As Integer
-l = 0
-Dim residentString As String
-
-For i = 2 To TextRange.Cells.Count
-    If TextRange.Cells(i) <> "" And _
-        rotationLocationLookupRange.Cells(i) = RotationLocationComparator And _
-        trainingLevelRange.Cells(i) = TrainingLevel Then
-            k = k + 1
-            ReDim Preserve textarray(1 To k)
-            textarray(k) = TextRange.Cells(i)
-    End If
-Next i
-
-'Now Join the Cells
-If Not Not textarray Then
-    If Not TypeName(Delimiter) = "Range" Then
-        JoinByRotationLocationAndLevel = textarray(1)
-            For i = 2 To UBound(textarray) - 1
-            JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter & textarray(i)
-            Next i
-        If i > 1 Then JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter & textarray(UBound(textarray))
+    Dim textarray() As Variant
+    
+    Dim i As Integer
+    Dim k As Integer
+    k = 0
+    Dim l As Integer
+    l = 0
+    Dim residentString As String
+    
+    For i = 2 To TextRange.Cells.Count
+        If TextRange.Cells(i) <> "" And _
+            rotationLocationLookupRange.Cells(i) = RotationLocationComparator And _
+            trainingLevelRange.Cells(i) = TrainingLevel Then
+                k = k + 1
+                ReDim Preserve textarray(1 To k)
+                textarray(k) = TextRange.Cells(i)
+        End If
+    Next i
+    
+    'Now Join the Cells
+    If Not Not textarray Then
+        If Not TypeName(Delimiter) = "Range" Then
+            JoinByRotationLocationAndLevel = textarray(1)
+                For i = 2 To UBound(textarray) - 1
+                JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter & textarray(i)
+                Next i
+            If i > 1 Then JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter & textarray(UBound(textarray))
+        Else
+           JoinByRotationLocationAndLevel = textarray(1)
+                For i = 2 To UBound(textarray) - 1
+                    l = l + 1
+                    If l = Delimiter.Cells.Count + 1 Then l = 1
+                JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter.Cells(l) & textarray(i)
+                Next i
+            If i > 1 Then JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter.Cells(l + i) & textarray(UBound(textarray))
+        End If
     Else
-       JoinByRotationLocationAndLevel = textarray(1)
-            For i = 2 To UBound(textarray) - 1
-                l = l + 1
-                If l = Delimiter.Cells.Count + 1 Then l = 1
-            JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter.Cells(l) & textarray(i)
-            Next i
-        If i > 1 Then JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter.Cells(l + i) & textarray(UBound(textarray))
+        JoinByRotationLocationAndLevel = ""
     End If
-Else
-    JoinByRotationLocationAndLevel = ""
-End If
 End Function
 
 
 
-Sub GenerateRotationCoordinatorExtract()
+Sub Generate_Rotation_Coordinator_Extract(Optional ByRef extract As Workbook)
 
     Dim fso As Scripting.FileSystemObject
     Dim fd As FileDialog
     Dim fileWasChosen As Boolean
+    Dim DataWorkbook As Workbook
+    Dim DataSheet As Worksheet
+    Dim ExtractTable As ListObject
     Dim firstYear As String
     Dim secondYear As String
     Dim newCol As Range
@@ -71,25 +80,31 @@ Sub GenerateRotationCoordinatorExtract()
     
     Set fso = New Scripting.FileSystemObject
     
-    MsgBox "Choose an IRIS/ORBS extract to generate from..."
-    Set fd = Application.FileDialog(msoFileDialogOpen)
+    If extract Is Nothing Then
+        MsgBox "Choose an IRIS/ORBS extract to generate from..."
+        Set fd = Application.FileDialog(msoFileDialogOpen)
     
-    fd.Filters.Clear
-    fd.Filters.Add "CSV Files", "*.csv, *.xl*"
-    fd.FilterIndex = 1
+        fd.Filters.Clear
+        fd.Filters.Add "CSV Files", "*.csv, *.xl*"
+        fd.FilterIndex = 1
+        
+        fd.AllowMultiSelect = False
+        fd.InitialFileName = "N:\DOM1\Post Graduate Program\IM\Competence by Design - IM\Communications\Rotation Coordinator"
+        fd.Title = "Choose an Extract Data File"
     
-    fd.AllowMultiSelect = False
-    fd.InitialFileName = "N:\DOM1\Post Graduate Program\IM\Competence by Design - IM\Communications\Rotation Coordinator"
-    fd.Title = "Choose an Extract Data File"
+        fileWasChosen = fd.Show
     
-    fileWasChosen = fd.Show
+        If Not fileWasChosen Then
+            MsgBox "You didn't choose a Block Report File. Report generation was terminated."
+            End
+        End If
+        
+        Set DataWorkbook = Workbooks.Open(Filename:=fd.SelectedItems(1))
+        Set extract = DataWorkbook
     
-    If Not fileWasChosen Then
-        MsgBox "You didn't choose a Block Report File. Report generation was terminated."
-        End
+    Else
+        Set DataWorkbook = extract
     End If
-    
-    Set DataWorkbook = Workbooks.Open(Filename:=fd.SelectedItems(1))
     
     ' Ask the User which Block this is for
     Dim UserValue As Variant
