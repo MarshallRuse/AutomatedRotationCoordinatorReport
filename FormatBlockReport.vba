@@ -140,21 +140,29 @@ Sub Format_Block_Report(Optional extract As Workbook)
     ActiveCell.FormulaR1C1 = "=AND([@PGY1s]<>" & Chr(34) & Chr(34) & ", OR([@PGY2s]<>" & Chr(34) & Chr(34) & ", [@PGY3s]<>" & Chr(34) & Chr(34) & "))"
     ExtractTable.ListColumns("JuniorAndSeniorRotation").Range.EntireColumn.AutoFit
     
+    ' Copy and paste all values so cells don't contain formulas
+    ExtractTable.Range.Cells.Copy
     
-    ExtractTable.Range.Cells.Select
-    ' Replace all NULLS
-    Selection.Replace What:="NULL", Replacement:="", LookAt:=xlWhole, _
-        SearchOrder:=xlByRows, MatchCase:=True, SearchFormat:=False, _
-        ReplaceFormat:=False
-    ' Break names onto new line by comma-space
-    Selection.Replace What:=", ", Replacement:="" & Chr(10) & "", LookAt:=xlPart, _
-        SearchOrder:=xlByRows, MatchCase:=True, SearchFormat:=False, _
-        ReplaceFormat:=False
-    ' Break names onto new line by comma
-    Selection.Replace What:=",", Replacement:="" & Chr(10) & "", LookAt:=xlPart, _
-        SearchOrder:=xlByRows, MatchCase:=True, SearchFormat:=False, _
-        ReplaceFormat:=False
-        
+    DataWorkbook.Worksheets("OriginalSheet").Range("A1").PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    
+    Application.CutCopyMode = False
+    
+    With ExtractTable.Range.Cells
+        ' Replace all NULLS
+        .Replace What:="NULL", Replacement:="", LookAt:=xlWhole, _
+            SearchOrder:=xlByRows, MatchCase:=True, SearchFormat:=False, _
+            ReplaceFormat:=False
+        ' Break names onto new line by comma-space
+        .Replace What:=", ", Replacement:="" & Chr(10) & "", LookAt:=xlPart, _
+            SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+            ReplaceFormat:=False
+        ' Break names onto new line by comma
+        .Replace What:=",", Replacement:="" & Chr(10) & "", LookAt:=xlPart, _
+            SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+            ReplaceFormat:=False
+        .EntireColumn.AutoFit
+    End With
     ' Insert VLOOKUP Columns
     ' Obtain the Rotation Coordinator Contact info lookup table
      
@@ -373,13 +381,7 @@ Sub Format_Block_Report(Optional extract As Workbook)
     Range("A1").Select
     Application.CutCopyMode = False
     
-    ' If the extract is passed as a parameter, and thus this sub is being called from
-    ' GenerateRotCoordReport, then save the formatted extract so it can be inspected
-    ' afterwards if needed
-    
-    If Not extract Is Nothing Then
-        DataWorkbook.Save
-    End If
+
 End Sub
 
 
