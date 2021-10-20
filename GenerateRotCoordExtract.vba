@@ -28,7 +28,9 @@ Function JoinByRotationLocationAndLevel( _
     l = 0
     Dim residentString As String
     
+    ' For every row in the column, starting from row 2 (ie. exclude header)
     For i = 2 To TextRange.Cells.Count
+        ' Ignore blank cells
         If TextRange.Cells(i) <> "" And _
             rotationLocationLookupRange.Cells(i) = RotationLocationComparator And _
             trainingLevelRange.Cells(i) = TrainingLevel Then
@@ -39,21 +41,33 @@ Function JoinByRotationLocationAndLevel( _
     Next i
     
     'Now Join the Cells
+    ' Not Not == textarray isn't Nothing
     If Not Not textarray Then
         If Not TypeName(Delimiter) = "Range" Then
             JoinByRotationLocationAndLevel = textarray(1)
-                For i = 2 To UBound(textarray) - 1
+            
+            ' If the array is only 1 element long, exit the function
+            If UBound(textarray) - LBound(textarray) + 1 = 1 Then
+                Exit Function
+            End If
+            For i = 2 To UBound(textarray) - 1
                 JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter & textarray(i)
-                Next i
-            If i > 1 Then JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter & textarray(UBound(textarray))
+            Next i
+            If i > 1 Then
+                JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter & textarray(UBound(textarray))
+            End If
         Else
-           JoinByRotationLocationAndLevel = textarray(1)
-                For i = 2 To UBound(textarray) - 1
-                    l = l + 1
-                    If l = Delimiter.Cells.Count + 1 Then l = 1
+            JoinByRotationLocationAndLevel = textarray(1)
+            For i = 2 To UBound(textarray) - 1
+                l = l + 1
+                If l = Delimiter.Cells.Count + 1 Then
+                    l = 1
+                End If
                 JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter.Cells(l) & textarray(i)
-                Next i
-            If i > 1 Then JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter.Cells(l + i) & textarray(UBound(textarray))
+            Next i
+            If i > 1 Then
+                JoinByRotationLocationAndLevel = JoinByRotationLocationAndLevel & Delimiter.Cells(l + i) & textarray(UBound(textarray))
+            End If
         End If
     Else
         JoinByRotationLocationAndLevel = ""
@@ -345,6 +359,14 @@ Sub Generate_Rotation_Coordinator_Extract(Optional ByRef extract As Workbook)
         rotLoc = finalSheet.Cells(j, 2).Value & finalSheet.Cells(j, 3).Value
         finalSheet.Cells(j, 9).Value = JoinByRotationLocationAndLevel(", ", emailRange, rotationLocationLookupRange, rotLoc, trainingLevelRange, 3)
     Next j
+    
+        ' If the extract is passed as a parameter, and thus this sub is being called from
+    ' GenerateRotCoordReport, then save the formatted extract so it can be inspected
+    ' afterwards if needed
+    
+    If Not extract Is Nothing Then
+        DataWorkbook.Save
+    End If
     
     Application.ScreenUpdating = True
 End Sub
